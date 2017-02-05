@@ -13,7 +13,7 @@ import org.chernovia.lib.netgames.db.GameData;
 import org.chernovia.lib.netgames.roomserv.*;
 
 public class AcroServ implements ConnListener {
-	static final String VERSION = "Version 0.1. Whee.";
+	static final String VERSION = "0.1";
 	static String CR;
 	static String DATAFILE = "/acrodata.txt";
 	static String ACROLOG = "/acrolog.txt";
