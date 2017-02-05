@@ -8,8 +8,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.PrintWriter;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.StringTokenizer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.duckstorm.common.javatools.IOUtil;
 
@@ -93,19 +96,18 @@ abstract public class GameBase extends IOUtil {
 		BufferedReader in = null;
 		PrintWriter out = null;
 		try {
-			int n = countLines(DATAFILE);
-			String S = null;
+			File dataFile = new File(GameBase.class.getResource(DATAFILE).toURI());
 			out = new PrintWriter(new BufferedWriter(new FileWriter(TEMPFILE)));
-			in = new BufferedReader(new FileReader(DATAFILE));
+			in = new BufferedReader(new FileReader(dataFile));
 			boolean found = false;
-			for (int x = 0; x < n; x++) {
-				S = in.readLine();
-				GameData D = new GameData(new StringTokenizer(S));
-				if (D.getHandle().equalsIgnoreCase(P.getHandle())) {
+			for (int x = 0; x < countLines(dataFile); x++) {
+				String line = in.readLine();
+				GameData data = new GameData(new StringTokenizer(line));
+				if (data.getHandle().equalsIgnoreCase(P.getHandle())) {
 					out.println(P.makeStr());
 					found = true;
 				} else
-					out.println(S);
+					out.println(line);
 			}
 			if (!found)
 				out.println(P.makeStr()); // add new player
@@ -119,6 +121,8 @@ abstract public class GameBase extends IOUtil {
 			// else { log.println("Renamed"); }
 		} catch (IOException e) {
 			IOError(e);
+		} catch (URISyntaxException ex) {
+			Logger.getLogger(GameBase.class.getName()).log(Level.SEVERE, null, ex);
 		}
 	}
 }

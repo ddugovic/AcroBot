@@ -73,7 +73,7 @@ public class AcroBox extends JFrame {
 	
 	public void updateAcros(int numacros, AcroGame.AcroList[] acrolist) {
 		String[] acros = new String[acrolist.length]; 
-		for (int i=0; i<numacros; i++) acros[i] = (i+1) + "." + acrolist[i].acro;
+		for (int i=0; i<numacros; i++) acros[i] = (i+1) + "." + acrolist[i].sentence;
 		makeList(acroPan,numacros,acros);
 	}
 	

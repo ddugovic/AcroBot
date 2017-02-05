@@ -16,7 +16,8 @@ import org.chernovia.lib.netgames.db.GameBase;
 
 public class AcroLetter {
 	static String LETTEXT = ".ltr";
-	int prob; String c;
+	int prob;
+	String c;
 
 	public AcroLetter(String s, int p) { c = s; prob = p; }
 
@@ -25,7 +26,6 @@ public class AcroLetter {
 		StringTokenizer S = null;
 		try {
 			try (BufferedReader in = new BufferedReader(new FileReader(
-				//AcroServ.class.getResourceAsStream(ABCFILE)));
 				new File(AcroLetter.class.getResource(ABCFILE).toURI())))) {
 				for (int x=0;x<26;x++) {
 					S = new StringTokenizer(in.readLine());
@@ -61,14 +61,13 @@ public class AcroLetter {
 	}
 
 	public static String listFiles() {
-		StringBuffer SB = new StringBuffer();
-		File[] files = new File("./res/acro").listFiles();
-		for (int f=0;f<files.length;f++) {
-			String fn = files[f].getName();
-			int i = fn.indexOf(".");
-			if (i>0 && fn.substring(i).equalsIgnoreCase(LETTEXT))
-				SB.append(fn + AcroServ.CR);
+		StringBuilder result = new StringBuilder();
+		for (File file : new File("./res/acro").listFiles()) {
+			String fileName = file.getName();
+			int i = fileName.indexOf(".");
+			if (i>0 && fileName.substring(i).equalsIgnoreCase(LETTEXT))
+				result.append(fileName + AcroServ.CR);
 		}
-		return SB.toString();
+		return result.toString();
 	}
 }

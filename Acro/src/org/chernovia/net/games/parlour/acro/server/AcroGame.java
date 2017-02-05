@@ -2,37 +2,50 @@ package org.chernovia.net.games.parlour.acro.server;
 
 import java.util.List;
 import java.util.StringTokenizer;
-import java.util.Vector;
+import java.util.function.Predicate;
 
 import org.chernovia.lib.misc.MiscUtil;
 import org.chernovia.lib.netgames.roomserv.Connection;
 import org.chernovia.lib.netgames.roomserv.NetServ;
 
-public class AcroGame extends Thread {
-	static final String ACRO_DG = "&", DG_DELIM = "~", 
-	NO_TOPIC = "", NO_ACRO = "";
+public class AcroGame implements Runnable {
+	static final String
+		ACRO_DG = "&",
+		DG_DELIM = "~",
+		NO_TOPIC = "",
+		NO_ACRO = "";
+
 	static final int
-	DG_NEW_ACRO = 0,
-	DG_ACRO_TIME = 1,
-	DG_ACRO_ENTERED = 2,
-	DG_SHOW_ACROS = 3,
-	DG_VOTE_TIME = 4,
-	DG_RESULTS = 5,
-	DG_WAIT_TIME = 6,
-	DG_PLAYERS = 7,
-	DG_INFO = 8,
-	DG_VARS = 9,
-	DG_NEXT_ACRO = 10;
+		DG_NEW_ACRO = 0,
+		DG_ACRO_TIME = 1,
+		DG_ACRO_ENTERED = 2,
+		DG_SHOW_ACROS = 3,
+		DG_VOTE_TIME = 4,
+		DG_RESULTS = 5,
+		DG_WAIT_TIME = 6,
+		DG_PLAYERS = 7,
+		DG_INFO = 8,
+		DG_VARS = 9,
+		DG_NEXT_ACRO = 10;
 	
 	static final int
-	MOD_RESET = -3,MOD_PAUSE = -2,MOD_IDLE = -1,
-	MOD_NEW = 0,MOD_ACRO = 1,MOD_VOTE = 2,MOD_WAIT = 3;
+		MOD_RESET = -3,
+		MOD_PAUSE = -2,
+		MOD_IDLE = -1,
+		MOD_NEW = 0,
+		MOD_ACRO = 1,
+		MOD_VOTE = 2,
+		MOD_WAIT = 3;
 
-	class AcroList  {
-		String acro; int author; int votes; long time;
-		public AcroList(String S, int a, long t) {
-			acro = S; author = a; votes = 0;
-			time = System.currentTimeMillis() - t;
+	static class AcroList {
+		String sentence;
+		final int author;
+		int votes = 0;
+		long time;
+		public AcroList(String sentence, int author, long time) {
+			this.sentence = sentence;
+			this.author = author;
+			this.time = System.currentTimeMillis() - time;
 		}
 	}
 	
@@ -54,8 +67,8 @@ public class AcroGame extends Thread {
 	AcroBox box;
 	
 	public String dumpGame() {
-		StringBuffer dump = 
-		new StringBuffer(
+		StringBuilder dump =
+		new StringBuilder(
 		AcroGame.ACRO_DG + DG_DELIM + AcroGame.DG_INFO + DG_DELIM);
 		dump.append(chan + DG_DELIM);
 		dump.append(((manager == null) ? "-" : manager) + DG_DELIM);
@@ -67,7 +80,7 @@ public class AcroGame extends Thread {
 	}
 	
 	public String dumpVars() {
-		StringBuffer dump = new StringBuffer(
+		StringBuilder dump = new StringBuilder(
 		ACRO_DG + DG_DELIM + DG_VARS + DG_DELIM);
 		dump.append(DG_DELIM);
 		dump.append(TIEBONUS ? 
@@ -93,14 +106,12 @@ public class AcroGame extends Thread {
 	}
 	
 	public String dumpPlayers() {
-		StringBuffer dump = 
-			new StringBuffer(AcroGame.ACRO_DG + DG_DELIM + 
+		StringBuilder dump =
+			new StringBuilder(AcroGame.ACRO_DG + DG_DELIM +
 			AcroGame.DG_PLAYERS + DG_DELIM);
 		StringBuffer playStr = new StringBuffer();
 		int n=0;
-		Vector<Connection> conns = serv.getAllConnections();
-		for (int i=0;i<conns.size();i++) {
-			Connection conn = (Connection)conns.elementAt(i);
+		for (Connection conn : serv.getAllConnections()) {
 			if (conn.getChan() == chan) {
 				n++;
 				playStr.append(conn.getHandle() + DG_DELIM);
@@ -114,11 +125,11 @@ public class AcroGame extends Thread {
 	}	
 	
 	public String dumpAcros() {
-		StringBuffer dump = new StringBuffer(ACRO_DG + DG_DELIM + 
+		StringBuilder dump = new StringBuilder(ACRO_DG + DG_DELIM +
 		((mode == MOD_WAIT) ?	DG_RESULTS: DG_SHOW_ACROS) + DG_DELIM);
 		dump.append(acronum + DG_DELIM);
 		for (int i=0;i<acronum;i++) {
-			dump.append(acrolist[i].acro + DG_DELIM +
+			dump.append(acrolist[i].sentence + DG_DELIM +
 			getPlayer(acrolist[i].author).getName() + DG_DELIM + 
 			acrolist[i].votes + DG_DELIM);
 		}
@@ -141,14 +152,9 @@ public class AcroGame extends Thread {
 		serv.tch(chan,s,false,dg);
 	}
 
-	private int countPlayers() {
-		int p = 0;
-		Vector<Connection> conns = serv.getAllConnections();
-		for (int i=0;i<conns.size();i++) {
-			Connection conn = (Connection)conns.elementAt(i);
-			if (conn.getChan() == chan) p++;
-		}
-		return p;
+	private long countPlayers() {
+		Predicate<Connection> predicate = (conn -> conn.getChan() == chan);
+		return serv.getAllConnections().stream().filter(predicate).count();
 	}	
 
 	public AcroGame(NetServ srv, int c) {
@@ -178,7 +184,7 @@ public class AcroGame extends Thread {
 		newshout = "New Acro Game starting in channel " +
 		chan + "!";
 		//adshout = "Play Acrophobia!  Finger me for details.";
-		spam(AcroServ.VERSION);
+		spam("Version "+AcroServ.VERSION+". Whee.");
 	}
 
 	private boolean initNewGame() {
@@ -232,38 +238,46 @@ public class AcroGame extends Thread {
 	}
 
 	private void idle() {
-		try { while (mode != MOD_ACRO) sleep(999999); }
+		try {
+			while (mode != MOD_ACRO)
+				Thread.sleep(999999); }
 		catch (InterruptedException e) {
-			if (mode != MOD_ACRO) idle();
+			if (mode != MOD_ACRO)
+				idle();
 		}
 	}
 
 	private String makeAcro(int numlets) {
 		int t=0;
 		for (int x=0;x<26;x++) t += letters[x].prob;
-		StringBuffer S = new StringBuffer(""); int c=0;
+		StringBuilder result = new StringBuilder("");
+		int c=0;
 		for (int x=0;x<numlets;x++) {
 			int r = MiscUtil.randInt(t); int z=0;
 			for (c=0;c<26;c++) {
 				z += letters[c].prob;
 				if (z>r) break;
 			}
-			S.append(letters[c].c.toUpperCase());
+			result.append(letters[c].c.toUpperCase());
 		}
-		return S.toString();
+		return result.toString();
 	}
 
 	private void acroRound() {
-		if (mode > MOD_IDLE) mode = MOD_ACRO; else return;
-		if (topic != NO_TOPIC) spam("Topic: " + topic);
+		if (mode > MOD_IDLE)
+			mode = MOD_ACRO;
+		else
+			return;
+		if (topic != NO_TOPIC)
+			spam("Topic: " + topic);
 		acro = makeAcro(acrolen); box.updateAcro(acro, topic);
-		if (GUI) spam(ACRO_DG + DG_DELIM + DG_NEW_ACRO + DG_DELIM +
-		acro + DG_DELIM + round,true);
+		if (GUI)
+			spam(ACRO_DG + DG_DELIM + DG_NEW_ACRO + DG_DELIM + acro + DG_DELIM + round,true);
 		int t = makeAcroTime();
 		spam("Round " + round + " Acro: " + acro + AcroServ.CR + 
 		"You have " + t + " seconds.");
-		if (GUI) spam(ACRO_DG + DG_DELIM + DG_ACRO_TIME + DG_DELIM + 
-		t + DG_DELIM,true);
+		if (GUI)
+			spam(ACRO_DG + DG_DELIM + DG_ACRO_TIME + DG_DELIM + t + DG_DELIM,true);
 		newtime = System.currentTimeMillis();
 		sleeper((t/2)*1000);
 		spam(t/2 + " seconds remaining.");
@@ -275,29 +289,30 @@ public class AcroGame extends Thread {
 	private void sleeper(long t) {
 		long rt = sleeping(t);
 		while (rt > 0) {
-			spam("Unpaused. (" +
-					rt/1000 + " seconds remaining)");
+			spam("Unpaused. (" + rt/1000 + " seconds remaining)");
 			rt = sleeping(rt);
 		}
 	}
 
-	private long sleeping(long t) {
+	private long sleeping(long duration) {
 		int oldmode = mode;
-		if (mode < MOD_NEW) return 0; //skip past stuff
-		long s = System.currentTimeMillis();
-		try { sleep(t); }
-		catch (InterruptedException e) {
+		if (mode < MOD_NEW)
+			return 0; //skip past stuff
+		long t = System.currentTimeMillis();
+		try {
+			Thread.sleep(duration);
+		} catch (InterruptedException e) {
 			if (mode != MOD_PAUSE) {
-				spam("Skipping..."); return 0;
+				spam("Skipping...");
+				return 0;
 			}
-			else {
-				spam("Pausing...");
-				try { sleep(999999); }
-				catch (InterruptedException i) {
-					mode = oldmode;
-				}
-				return t - (System.currentTimeMillis() - s);
+			spam("Pausing...");
+			try {
+				Thread.sleep(999999);
+			} catch (InterruptedException i) {
+				mode = oldmode;
 			}
+			return duration - (System.currentTimeMillis() - t);
 		}
 		return 0;
 	}
@@ -313,19 +328,18 @@ public class AcroGame extends Thread {
 	}
 
 	private String showAcros() {
-		StringBuffer S = new StringBuffer(
-				"Round " + round + " Acros: " + AcroServ.CR);
+		StringBuilder result = new StringBuilder("Round " + round + " Acros: " + AcroServ.CR);
 		jumble();
 		//S.append("____________________________________________" + AcroServ.CR);
 		longhand = 0; // for formatting
 		for (int x=0;x<acronum;x++) {
-			S.append((x+1) + ". ");
-			S.append(acrolist[x].acro + AcroServ.CR);
+			result.append((x+1) + ". ");
+			result.append(acrolist[x].sentence + AcroServ.CR);
 			int l = players[acrolist[x].author].getName().length();
 			if (l > longhand) longhand = l; //get longest handle
 		}
 		//S.append("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" + AcroServ.CR);
-		return S.toString();
+		return result.toString();
 	}
 
 	private void jumble() {
@@ -340,9 +354,15 @@ public class AcroGame extends Thread {
 	}
 
 	private void voteRound() {
-		if (mode > MOD_IDLE) mode = MOD_VOTE; else return;
-		if (topic != NO_TOPIC) spam("Topic: " + topic);
-		spam(showAcros()); if (GUI) spam(dumpAcros(),true);
+		if (mode > MOD_IDLE)
+			mode = MOD_VOTE;
+		else
+			return;
+		if (topic != NO_TOPIC)
+			spam("Topic: " + topic);
+		spam(showAcros());
+		if (GUI)
+			spam(dumpAcros(),true);
 		box.updateAcros(acronum,acrolist); 
 		int t=getVoteTime(); 
 		spam("Time to vote!  Enter the number of an acro above. " +
@@ -352,8 +372,12 @@ public class AcroGame extends Thread {
 	}
 
 	private void scoreRound() {
-		if (mode > MOD_IDLE) mode = MOD_WAIT; else return;
-		if (topic != NO_TOPIC) spam("Topic: " + topic);
+		if (mode > MOD_IDLE)
+			mode = MOD_WAIT;
+		else
+			return;
+		if (topic != NO_TOPIC)
+			spam("Topic: " + topic);
 		spam(showVote(false));
 		spam(showScore());
 		box.updateScores(numplay,players);
@@ -386,30 +410,30 @@ public class AcroGame extends Thread {
 	}
 
 	private void getTopics() {
-		List<String> topicvec = AcroBase.readFile(AcroServ.TOPFILE);
-		int lof = topicvec.size();
-		int[] toplist = new int[maxtopic];
+		List<String> topicList = AcroBase.readFile(AcroServ.TOPFILE);
+		int lof = topicList.size();
+		int[] topicKey = new int[maxtopic];
 		for (int x=0;x<maxtopic;x++) {
 			boolean match;
 			do {
 				match = false;
-				toplist[x] = MiscUtil.randInt(lof-1);
+				topicKey[x] = MiscUtil.randInt(lof-1);
 				//System.out.println("Topic #" + x + ": " +
 				//toplist[x]);
 				for (int y=x-1;y>=0;y--)
-					if (toplist[x] == toplist[y]) match = true;
+					if (topicKey[x] == topicKey[y]) match = true;
 			} while (match);
 		}
 		for (int t=0;t<maxtopic;t++)
-			topics[t] = topicvec.get(toplist[t]);
+			topics[t] = topicList.get(topicKey[t]);
 		//topics[MAXTOPIC-1] = DEFTOPIC;
 	}
 
 	private String showTopics() {
-		StringBuffer SB = new StringBuffer();
+		StringBuilder result = new StringBuilder();
 		for (int t=0;t<maxtopic;t++)
-			SB.append((t+1) + ". " + topics[t] + AcroServ.CR);
-		return SB.toString();
+			result.append((t+1) + ". " + topics[t] + AcroServ.CR);
+		return result.toString();
 	}
 
 	protected void newTopic(int p, String msg) {
@@ -440,12 +464,15 @@ public class AcroGame extends Thread {
 		for (int x=0;x<numplay;x++) {
 			if (players[x].score == w)  { p=x; z++; }
 		}
-		if (z == 1) return p; else return -2; //tie!
+		if (z == 1)
+			return p;
+		else
+			return -2; //tie!
 	}
 
 	private String showVote(boolean fancyformat) {
 		String CR = AcroServ.CR;
-		StringBuffer S = new StringBuffer(CR + "Round " +
+		StringBuilder result = new StringBuilder(CR + "Round " +
 				round + " Voting Results: " + CR + CR);
 		int acrocol = maxcol - (votecol + longhand);
 		if (fancyformat) for (int x=0;x<acronum;x++) {
@@ -456,51 +483,52 @@ public class AcroGame extends Thread {
 				MiscUtil.txtPad(longhand-h) +
 				acrolist[x].votes + " votes! (" +
 				acrolist[x].time/(float)1000 + ")" + CR;
-			int l = acrolist[x].acro.length();
+			int l = acrolist[x].sentence.length();
 			if (l < acrocol) {
-				S.append("  " + acrolist[x].acro +
+				result.append("  " + acrolist[x].sentence +
 						MiscUtil.txtPad(acrocol - l) + acroline);
 			}
 			else {
 				int i = MiscUtil.lastSpc(
-						acrolist[x].acro.substring(0,acrocol));
-				S.append("  " + acrolist[x].acro.substring(0,i) +
+						acrolist[x].sentence.substring(0,acrocol));
+				result.append("  " + acrolist[x].sentence.substring(0,i) +
 						MiscUtil.txtPad(acrocol - i) +
-						acroline + " " + acrolist[x].acro.substring(i) +
+						acroline + " " + acrolist[x].sentence.substring(i) +
 						CR);
 			}
 		}
 		else for (int x=0;x<acronum;x++) {
-			S.append(
-			acrolist[x].acro + " (" + players[acrolist[x].author].getName() + ") " +
-			acrolist[x].votes + " votes! (" + acrolist[x].time/(float)1000 + ")" + 
-			CR);
+			result.append(
+			acrolist[x].sentence + " (" + players[acrolist[x].author].getName() + ") " +
+			acrolist[x].votes + " votes! (" + acrolist[x].time/(float)1000 + ")" + CR);
 		}
-		S.append(CR);
+		result.append(CR);
 		for (int x=0;x<acronum;x++) {
 			int a = acrolist[x].author;
 			if (acrolist[x].votes>0 && players[a].vote>=0)
 				players[a].score += acrolist[x].votes;
 		}
-		int s = getSpeed();	if (s>=0) {
-			S.append(" " + players[s].getName()	+
-					" -> " + speedpts + " speed bonus points");
+		int s = getSpeed();
+		if (s>=0) {
+			result.append(" " + players[s].getName() + " -> " + speedpts + " speed bonus points");
 			players[s].score += speedpts;
-			S.append(CR);
+			result.append(CR);
 		}
-		S.append(winners() + CR);
-		return S.toString();
+		result.append(winners() + CR);
+		return result.toString();
 	}
 
 	private int getSpeed() {
-		int s = -1; long t = 9999999;
+		int s = -1;
+		long t = 9999999;
 		for (int x=0;x<acronum;x++) {
 			int a = acrolist[x].author;
 			if (acrolist[x].time < t &&
 					players[a].score < winscore-4 &&
 					players[a].vote >= 0 &&
 					acrolist[x].votes > 0) {
-				s = a; t = acrolist[x].time;
+				s = a;
+				t = acrolist[x].time;
 			}
 		}
 		return s;
@@ -508,11 +536,10 @@ public class AcroGame extends Thread {
 
 	private String winners() {
 		String CR = AcroServ.CR;
-		StringBuffer S = new StringBuffer("");
+		StringBuilder result = new StringBuilder("");
 		for (int x=0;x<acronum;x++)
 			if (players[acrolist[x].author].vote < 0) {
-				S.append(" " +
-						players[acrolist[x].author].getName() +
+				result.append(" " + players[acrolist[x].author].getName() +
 						" did not vote, and thus forfeits this round." + CR);
 			}
 		int w = 0, l = acro.length();
@@ -527,7 +554,7 @@ public class AcroGame extends Thread {
 					players[acrolist[x].author].vote >= 0) {
 				if (TIEBONUS) {
 					players[acrolist[x].author].score += l;
-					S.append(" " +
+					result.append(" " +
 							players[acrolist[x].author].getName());
 				}
 				if (acrolist[x].time < wintime) {
@@ -535,19 +562,20 @@ public class AcroGame extends Thread {
 					wintime = acrolist[x].time;
 				}
 			}
-		if (w < 1) S.append(" No winners.");
+		if (w < 1)
+			result.append(" No winners.");
 		else if (TIEBONUS) {
-			S.append(" -> " + l + " bonus points!");
+			result.append(" -> " + l + " bonus points!");
 		}
 		else if (lastwin >= 0) { //can lastwin be < 0?
-			S.append(" " + players[lastwin].getName() +
+			result.append(" " + players[lastwin].getName() +
 					" -> " + l + " bonus points!");
 			players[lastwin].score += l;
 		}
 		if (TOPICS && lastwin >= 0)
-			S.append(CR + " " + players[lastwin].getName() +
+			result.append(CR + " " + players[lastwin].getName() +
 			" gets to choose the next topic.");
-		return S.toString();
+		return result.toString();
 	}
 
 	private String showScore() {
@@ -555,50 +583,49 @@ public class AcroGame extends Thread {
 		for (int p=0;p<numplay;p++) {
 			int x = findAcro(p); int v = players[p].vote;
 			if (x<0) { //did not enter an acro this round
-				if (v<0) players[p].save("",-1,0);
-				else players[p].save("",acrolist[v].author,0);
+				if (v<0)
+					players[p].save("",-1,0);
+				else
+					players[p].save("",acrolist[v].author,0);
 			}
 			else {
-				if (v<0) players[p].save(acrolist[x].acro,
-						-1,acrolist[x].votes);
-				else players[p].save(acrolist[x].acro,
-						acrolist[v].author,acrolist[x].votes);
+				if (v<0)
+					players[p].save(acrolist[x].sentence,-1,acrolist[x].votes);
+				else
+					players[p].save(acrolist[x].sentence,acrolist[v].author,acrolist[x].votes);
 			}
 		}
 		// show scores
-		StringBuffer S = new StringBuffer(" Round " + round +
-				" Scores: " + AcroServ.CR);
+		StringBuilder result = new StringBuilder(" Round " + round + " Scores: " + AcroServ.CR);
 		for (int x=0;x<numplay;x++) {
 			if (players[x].score>0)
-				S.append(" " + players[x].getName() + ": " +
-						players[x].score + " ");
+				result.append(" " + players[x].getName() + ": " + players[x].score + " ");
 			players[x].vote = -1;
 		}
-		return S.toString() + AcroServ.CR;
+		return result.toString() + AcroServ.CR;
 	}
 	
 	private String summarize()  {
-		StringBuffer S = new StringBuffer("History:" +
-				AcroServ.CR);
-		if (serv.getType() != NetServ.IRC) for (int p=0;p<numplay;p++)	{
-			S.append(showVoteHistory(p));
-		}
-		return S.toString();
+		StringBuilder result = new StringBuilder("History:" + AcroServ.CR);
+		if (serv.getType() != NetServ.IRC)
+			for (int p=0;p<numplay;p++)	{
+				result.append(showVoteHistory(p));
+			}
+		return result.toString();
 	}
 
 	private String showVoteHistory(int p) {
-		StringBuffer S =
-			new StringBuffer(" " + players[p].getName() + ": ");
+		StringBuilder result = new StringBuilder(" " + players[p].getName() + ": ");
 		for (int x=0;x<numplay;x++) {
 			int c = 0;
 			for (int r=0;r<players[x].acros;r++) { //erp?
 				if (players[x].record[r].vote == p) c++;
 			}
 			if (c > 0)
-				S.append(players[x].getName() +	"(" + c + ") ");
+				result.append(players[x].getName() +	"(" + c + ") ");
 		}
-		S.append(AcroServ.CR);
-		return S.toString();
+		result.append(AcroServ.CR);
+		return result.toString();
 	}
 
 	private void showHistory() {
@@ -616,18 +643,19 @@ public class AcroGame extends Thread {
 	}
 
 	protected boolean isLegal(String A) {
-		StringTokenizer ST = new StringTokenizer(A);
+		StringTokenizer tokenizer = new StringTokenizer(A);
 		System.out.println("Received acro: " + A + " (current: " + acro + ")");
-		if (acro.length() != ST.countTokens()) {
-			System.out.println("Bad length: " + ST.countTokens()); return false;
+		if (acro.length() != tokenizer.countTokens()) {
+			System.out.println("Bad length: " + tokenizer.countTokens()); return false;
 		}
 		int x=0; 
-		while (ST.hasMoreTokens()) {
-			String S = ST.nextToken();
-			char c = S.charAt(0);
-			if (c == '"' && S.length()>1) c = S.charAt(1);
-			if (acro.charAt(x)!=c) {
-				System.out.println("Bad match: " + c + " != " + acro.charAt(x)); 
+		while (tokenizer.hasMoreTokens()) {
+			String token = tokenizer.nextToken();
+			char ch = token.charAt(0);
+			if (ch == '"' && token.length()>1)
+				ch = token.charAt(1);
+			if (acro.charAt(x)!=ch) {
+				System.out.println("Bad match: " + ch + " != " + acro.charAt(x));
 				return false; 
 			}
 			x++;
@@ -635,12 +663,12 @@ public class AcroGame extends Thread {
 		return true;
 	}
 
-	protected String makeAcro(String A) {
-		StringBuffer SB = new StringBuffer();
-		StringTokenizer ST = new StringTokenizer(A);
-		while (ST.hasMoreTokens())
-			SB.append(ST.nextToken().charAt(0));
-		return SB.toString().toUpperCase();
+	protected String getAcronym(String sentence) {
+		StringBuilder result = new StringBuilder();
+		StringTokenizer tokenizer = new StringTokenizer(sentence);
+		while (tokenizer.hasMoreTokens())
+			result.append(tokenizer.nextToken().charAt(0));
+		return result.toString().toUpperCase();
 	}
 
 	private int findAcro(int p)  { //find acro by player
@@ -688,7 +716,7 @@ public class AcroGame extends Thread {
 		}
 		int x = findAcro(p);
 		if (x>=0) {
-			acrolist[x].acro = A;
+			acrolist[x].sentence = A;
 			acrolist[x].time=System.currentTimeMillis()-newtime;
 			serv.tell(handle,"Changed your acro.",false,false);
 			serv.tell(handle,"Time: " +
@@ -736,12 +764,11 @@ public class AcroGame extends Thread {
 
 	protected String showLetters() {
 		if (letters == null) return "Nothing loaded.";
-		StringBuffer SB = new StringBuffer();
+		StringBuilder result = new StringBuilder();
 		for (int x=0;x<26;x++) {
-			SB.append(letters[x].c + ": " +
-					letters[x].prob + AcroServ.CR);
+			result.append(letters[x].c + ": " +letters[x].prob + AcroServ.CR);
 		}
-		return SB.toString();
+		return result.toString();
 	}
 	
 	Connection getManager() { return manager; }
@@ -759,11 +786,8 @@ public class AcroGame extends Thread {
 	String getAcro() { return acro; }
 	
 	protected String listPlayers() {
-		StringBuffer playstr = 
-		new StringBuffer("Players: " + AcroServ.CR);
-		Vector<Connection> conns = serv.getAllConnections();
-		for (int i=0;i<conns.size();i++) {
-			Connection conn = (Connection)conns.elementAt(i);
+		StringBuilder playstr = new StringBuilder("Players: " + AcroServ.CR);
+		for (Connection conn : serv.getAllConnections()) {
 			if (conn.getChan() == chan) {
 				playstr.append(conn.getHandle() + ": ");
 				int p = getPlayer(conn.getHandle());
@@ -776,34 +800,31 @@ public class AcroGame extends Thread {
 	}
 	
 	public String listVars() {
-		StringBuffer SB = new StringBuffer();
-		//SB.append("Shouting: " + SHOUTING + AcroServ.CR);
-		SB.append("Settings: " + AcroServ.CR);
-		SB.append("Channel: " + chan);
-		SB.append(AcroServ.CR);
-		SB.append("Manager: " + (manager == null ? "Nobody" : 
-		manager.getHandle()));
-		SB.append(AcroServ.CR);
-		SB.append(TIEBONUS ? 
-		"fastest acro breaks tie" : "ties are not broken");	
-		SB.append(AcroServ.CR);
-		SB.append(REVEAL ? "public voting" : "private voting");
-		SB.append(AcroServ.CR);
-		SB.append(TOPICS ? "topics" : "no topics");
-		SB.append(AcroServ.CR);
-		SB.append(FLATTIME ? 
-		"dynamic acro times" : "static acro times");
-		SB.append(AcroServ.CR);
-		SB.append(ADULT ? "adult themes" : "clean themes");
-		SB.append(AcroServ.CR);
-		SB.append("Current players: " + countPlayers());
-		SB.append(AcroServ.CR);
-		SB.append("Max players: " + maxplay);
-		SB.append(AcroServ.CR);
-		SB.append("Min letters: " + minacro);
-		SB.append(AcroServ.CR);
-		SB.append("Max letters: " + maxacro);
-		SB.append(AcroServ.CR);
-		return SB.toString();
+		StringBuilder result = new StringBuilder();
+		//result.append("Shouting: " + SHOUTING + AcroServ.CR);
+		result.append("Settings: " + AcroServ.CR);
+		result.append("Channel: " + chan);
+		result.append(AcroServ.CR);
+		result.append("Manager: " + (manager == null ? "Nobody" : manager.getHandle()));
+		result.append(AcroServ.CR);
+		result.append(TIEBONUS ? "fastest acro breaks tie" : "ties are not broken");
+		result.append(AcroServ.CR);
+		result.append(REVEAL ? "public voting" : "private voting");
+		result.append(AcroServ.CR);
+		result.append(TOPICS ? "topics" : "no topics");
+		result.append(AcroServ.CR);
+		result.append(FLATTIME ? "dynamic acro times" : "static acro times");
+		result.append(AcroServ.CR);
+		result.append(ADULT ? "adult themes" : "clean themes");
+		result.append(AcroServ.CR);
+		result.append("Current players: " + countPlayers());
+		result.append(AcroServ.CR);
+		result.append("Max players: " + maxplay);
+		result.append(AcroServ.CR);
+		result.append("Min letters: " + minacro);
+		result.append(AcroServ.CR);
+		result.append("Max letters: " + maxacro);
+		result.append(AcroServ.CR);
+		return result.toString();
 	}
 }

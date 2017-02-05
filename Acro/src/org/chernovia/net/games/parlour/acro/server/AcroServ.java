@@ -315,7 +315,7 @@ public class AcroServ implements ConnListener {
 				conn.tell(serv.who(),true,false);
 			}
 			else if (s.equalsIgnoreCase("VERSION")) {
-				conn.tell(VERSION);
+				conn.tell("Version "+AcroServ.VERSION);
 			}
 			else if (s.equalsIgnoreCase("VARS") ||
 					s.equalsIgnoreCase("INFO")) {

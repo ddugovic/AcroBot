@@ -2,6 +2,7 @@ package org.duckstorm.common.javatools;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -90,11 +91,16 @@ public class IOUtil {
 		}
 	}
 
+	@Deprecated
 	public static int countLines(String fileName) {
+		return countLines(new File(fileName));
+	}
+
+	public static int countLines(File dataFile) {
 		int x = 0;
 		BufferedReader in = null;
 		try {
-			in = new BufferedReader(new FileReader(fileName));
+			in = new BufferedReader(new FileReader(dataFile));
 			while (true) {
 				String s = in.readLine();
 				if (s == null)
@@ -103,7 +109,7 @@ public class IOUtil {
 			}
 		} catch (IOException e) {
 			logger.log(Level.SEVERE,
-					"Unable to read file \"{0}\".  Returning 0.", fileName);
+					"Unable to read file \"{0}\".  Returning 0.", dataFile);
 			return 0;
 		} finally {
 			closeQuietly(in);
