@@ -7,7 +7,10 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.net.URISyntaxException;
 import java.util.StringTokenizer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import org.chernovia.lib.netgames.db.GameBase;
 
@@ -21,20 +24,21 @@ public class AcroLetter {
 		AcroLetter[] alphabet = new AcroLetter[26];
 		StringTokenizer S = null;
 		try {
-			BufferedReader in =
-				new BufferedReader(new FileReader(
+			try (BufferedReader in = new BufferedReader(new FileReader(
 				//AcroServ.class.getResourceAsStream(ABCFILE)));
-				new File(ABCFILE)));
-			for (int x=0;x<26;x++) {
-				S = new StringTokenizer(in.readLine());
-				if (S.countTokens()<2) { in.close(); return null; }
-				alphabet[x] = new AcroLetter(S.nextToken(),
+				new File(AcroLetter.class.getResource(ABCFILE).toURI())))) {
+				for (int x=0;x<26;x++) {
+					S = new StringTokenizer(in.readLine());
+					if (S.countTokens()<2) { in.close(); return null; }
+					alphabet[x] = new AcroLetter(S.nextToken(),
 						Integer.parseInt(S.nextToken()));
+				}
 			}
-			in.close();
 		}
 		catch (IOException e) {
 			GameBase.IOError(e); return null;
+		} catch (URISyntaxException ex) {
+			Logger.getLogger(AcroLetter.class.getName()).log(Level.SEVERE, null, ex);
 		}
 		return alphabet;
 	}

@@ -14,12 +14,12 @@ import org.chernovia.lib.netgames.roomserv.*;
 public class AcroServ implements ConnListener {
 	static final String VERSION = "Version 0.1. Whee.";
 	static String CR;
-	static String DATAFILE = "res/acrodata.txt";
-	static String ACROLOG = "res/acrolog.txt";
-	static String MGRFILE = "res/managers.txt";
-	static String TOPFILE = "res/topics.txt";
-	static String HELPFILE = "res/acrohelp.txt";
-	static String ABCDEF = "res/deflet";
+	static String DATAFILE = "/acrodata.txt";
+	static String ACROLOG = "/acrolog.txt";
+	static String MGRFILE = "/managers.txt";
+	static String TOPFILE = "/topics.txt";
+	static String HELPFILE = "/acrohelp.txt";
+	static String ABCDEF = "/deflet";
 	String acroCmdPfx = "!", mgrCmdPfx = "~";
 	AcroGame[] games;
 	NetServ serv; 
@@ -38,7 +38,14 @@ public class AcroServ implements ConnListener {
 		for (Flooder f: floodList) if (f.conn.equals(c)) return f;
 		return null;
 	}
-	
+
+	/**
+	 * Constructs the AcroBot server
+	 * @param name		IRC name of the bot
+	 * @param host		IRC server host name
+	 * @param oauth		OAuth authentication key
+	 * @param channel	IRC channel to moderate
+	 */
 	public AcroServ(String name, String host, String oauth, String channel) {
 		floodList = new Vector<Flooder>();
 		initTwitch(name,host,oauth,channel);
@@ -46,7 +53,7 @@ public class AcroServ implements ConnListener {
 	
 	public void initTwitch(String name, String host, String oauth, String channel) {
 		CR = NetServ.newline[NetServ.IRC] = "|";
-		serv = new TwitchServ(name,"irc.twitch.tv",oauth,"#zugaddict",this);
+		serv = new TwitchServ(name,host,oauth,channel,this);
 		startGames(1);
 	}
 	
@@ -66,7 +73,6 @@ public class AcroServ implements ConnListener {
 	}
 
 	public static void main(String[] args) {
-		//AcroServ S = new AcroServ(args.length > 0 ? Integer.parseInt(args[0]) : 5678);
 		AcroServ S = new AcroServ(args[0],args[1],args[2],args[3]);
 		AcroBase.CR = CR;
 		AcroBase.DATAFILE = DATAFILE;
