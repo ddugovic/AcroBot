@@ -196,6 +196,11 @@ public class AcroGame implements Runnable {
 		return true;
 	}
 
+	public void stop() {
+		Thread.currentThread().interrupt();
+	}
+
+	@Override
 	public void run() {
 		try {
 			initGame();
